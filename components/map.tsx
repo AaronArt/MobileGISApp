@@ -1,59 +1,105 @@
-import React, { useEffect, useRef } from 'react';
-import MapView, { Callout, Marker, PROVIDER_GOOGLE, Camera } from 'react-native-maps';
-import { Alert, StyleSheet, Text, View, Button } from 'react-native';
+import React, { useEffect, useState, useRef } from 'react';
+import { StyleSheet, View, Dimensions, TouchableOpacity, Text } from 'react-native';
+import MapView, { Marker } from 'react-native-maps';
+import * as Location from 'expo-location';
+import MapViewDirections from 'react-native-maps-directions';
 import { useCoordinateContext } from './CoordinateContext';
-import { markers } from '../assets/market';
+import places from '../assets/places.json';
 
-const INITIAL_REGION = {
-  latitude: 49.01,
-  longitude: 8.40,
-  latitudeDelta: 0.0922,
-  longitudeDelta: 0.0421,
-};
+const { width, height } = Dimensions.get('window');
+const ASPECT_RATIO = width / height;
+const LATITUDE_DELTA = 0.0922;
+const LONGITUDE_DELTA = LATITUDE_DELTA * ASPECT_RATIO;
 
-const MapComponent = () => {
-  const { coordinates } = useCoordinateContext();
+const Map = () => {
+  const { coordinates, setCoordinates } = useCoordinateContext();
+  const [location, setLocation] = useState<{ latitude: number, longitude: number } | null>(null);
+  const [nearestPlace, setNearestPlace] = useState<any>(null);
   const mapRef = useRef<MapView | null>(null);
 
   useEffect(() => {
-    if (coordinates) {
-      mapRef.current?.animateToRegion({
-        latitude: coordinates.latitude,
-        longitude: coordinates.longitude,
-        latitudeDelta: 0.0922,
-        longitudeDelta: 0.0421,
+    const fetchLocation = async () => {
+      let { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== 'granted') {
+        console.error('Permission to access location was denied');
+        return;
+      }
+
+      let location = await Location.getCurrentPositionAsync({});
+      setLocation({
+        latitude: location.coords.latitude,
+        longitude: location.coords.longitude,
+      });
+      setCoordinates(location.coords);
+    };
+
+    fetchLocation();
+  }, []);
+
+  useEffect(() => {
+    if (location) {
+      findNearestPlace();
+    }
+  }, [location]);
+
+  const haversineDistance = (coords1: [number, number], coords2: [number, number]) => {
+    const toRad = (x: number) => x * Math.PI / 180;
+    const lat1 = coords1[1];
+    const lon1 = coords1[0];
+    const lat2 = coords2[1];
+    const lon2 = coords2[0];
+    const R = 6371; // Earth radius in kilometers
+    const dLat = toRad(lat2 - lat1);
+    const dLon = toRad(lon2 - lon1);
+    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+              Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) *
+              Math.sin(dLon / 2) * Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c * 1000; // Distance in meters
+  };
+
+  const findNearestPlace = () => {
+    if (location) {
+      let minDistance = Infinity;
+      let closestPlace = null;
+
+      places.features.forEach((place: any) => {
+        const distance = haversineDistance(
+          [location.longitude, location.latitude],
+          place.geometry.coordinates
+        );
+
+        if (distance < minDistance) {
+          minDistance = distance;
+          closestPlace = {
+            ...place,
+            distance,
+          };
+        }
+      });
+
+      setNearestPlace(closestPlace);
+    }
+  };
+
+  const handleZoom = (factor: number) => {
+    if (mapRef.current) {
+      mapRef.current.getCamera().then((camera) => {
+        camera.zoom += factor;
+        mapRef.current?.animateCamera(camera, { duration: 1000 }); // Smooth zoom
       });
     }
-  }, [coordinates]);
-
-  const zoomIn = () => {
-    mapRef.current?.getCamera().then((camera: Camera) => {
-      if (camera.zoom !== undefined) {
-        camera.zoom += 1;
-        mapRef.current?.animateCamera(camera);
-      }
-    });
   };
 
-  const zoomOut = () => {
-    mapRef.current?.getCamera().then((camera: Camera) => {
-      if (camera.zoom !== undefined) {
-        camera.zoom -= 1;
-        mapRef.current?.animateCamera(camera);
-      }
-    });
-  };
-
-  const onMarkerSelected = (marker: any) => {
-    Alert.alert(marker.name);
-  };
-
-  const calloutPressed = (ev: any) => {
-    console.log(ev);
-  };
-
-  const onRegionChange = (region: any) => {
-    console.log(region);
+  const handleCenterLocation = () => {
+    if (location && mapRef.current) {
+      mapRef.current.animateCamera({
+        center: {
+          latitude: location.latitude,
+          longitude: location.longitude,
+        },
+      });
+    }
   };
 
   return (
@@ -61,30 +107,57 @@ const MapComponent = () => {
       <MapView
         ref={mapRef}
         style={styles.map}
-        provider={PROVIDER_GOOGLE}
-        initialRegion={INITIAL_REGION}
-        showsUserLocation
-        showsMyLocationButton
-        onRegionChangeComplete={(region) => onRegionChange(region)}
+        initialRegion={{
+          latitude: location ? location.latitude : 37.78825,
+          longitude: location ? location.longitude : -122.4324,
+          latitudeDelta: LATITUDE_DELTA,
+          longitudeDelta: LONGITUDE_DELTA,
+        }}
+        showsUserLocation={true}
+        showsMyLocationButton={false} // We'll use a custom button
       >
-        {markers.map((marker, index) => (
+        {location && (
           <Marker
-            key={index}
-            title={marker.name}
-            coordinate={marker}
-            onPress={() => onMarkerSelected(marker)}
-          >
-            <Callout onPress={calloutPressed}>
-              <View style={{ padding: 10 }}>
-                <Text style={{ fontSize: 24 }}>Hello</Text>
-              </View>
-            </Callout>
-          </Marker>
-        ))}
+            coordinate={{
+              latitude: location.latitude,
+              longitude: location.longitude,
+            }}
+            title="Current Location"
+          />
+        )}
+        {location && nearestPlace && (
+          <>
+            <Marker
+              coordinate={{
+                latitude: nearestPlace.geometry.coordinates[1],
+                longitude: nearestPlace.geometry.coordinates[0],
+              }}
+              title={nearestPlace.properties.name}
+              description={`Distance: ${nearestPlace.distance.toFixed(2)} meters`}
+            />
+            <MapViewDirections
+              origin={location}
+              destination={{
+                latitude: nearestPlace.geometry.coordinates[1],
+                longitude: nearestPlace.geometry.coordinates[0],
+              }}
+              apikey="AIzaSyDi7GzLT9GeT5uI9PKFlRKCiMaUfj5iUBs" // Replace with your Google Maps API Key
+              strokeWidth={3}
+              strokeColor="blue"
+            />
+          </>
+        )}
       </MapView>
       <View style={styles.buttonContainer}>
-        <Button title="Zoom In" onPress={zoomIn} />
-        <Button title="Zoom Out" onPress={zoomOut} />
+        <TouchableOpacity style={styles.button} onPress={() => handleZoom(1)}>
+          <Text style={styles.buttonText}>+</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={() => handleZoom(-1)}>
+          <Text style={styles.buttonText}>-</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.button} onPress={handleCenterLocation}>
+          <Text style={styles.buttonText}>GPS</Text>
+        </TouchableOpacity>
       </View>
     </View>
   );
@@ -104,6 +177,16 @@ const styles = StyleSheet.create({
     marginVertical: 20,
     backgroundColor: 'transparent',
   },
+  button: {
+    backgroundColor: 'rgba(255, 255, 255, 0.7)',
+    padding: 10,
+    marginHorizontal: 10,
+    borderRadius: 5,
+  },
+  buttonText: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
 });
 
-export default MapComponent;
+export default Map;

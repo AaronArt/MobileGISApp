@@ -1,7 +1,7 @@
 import { StyleSheet } from 'react-native';
 import EditScreenInfo from '@/components/EditScreenInfo';
 import { Text, View } from '@/components/Themed';
-import  MapComponent from '@/components/map'
+import  Map from '@/components/map'
 import { CoordinateProvider } from '@/components/CoordinateContext';
 
 
@@ -12,7 +12,7 @@ export default function TabTwoScreen() {
       <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
       <EditScreenInfo path="app/(tabs)/two.tsx" />
       <CoordinateProvider>
-        <MapComponent />
+        <Map/>
       </CoordinateProvider>
     </View>
   );
@@ -31,6 +31,6 @@ const styles = StyleSheet.create({
   separator: {
     marginVertical: 30,
     height: 1,
-    width: '80%',
+    width: '100%',
   },
 });

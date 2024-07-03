@@ -79,6 +79,7 @@ const ButtonLocation = () => {
   useEffect(() => {
     findNearestPlace();
   }, [location, findNearestPlace]);
+  
 
   return (
     <View style={styles.container}>
