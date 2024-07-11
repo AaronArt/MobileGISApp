@@ -1,20 +1,19 @@
-import { StyleSheet } from 'react-native';
-import EditScreenInfo from '@/components/EditScreenInfo';
-import { Text, View } from '@/components/Themed';
-import  Map from '@/components/map'
+import React, { useState } from 'react';
+import { StyleSheet, View, Text } from 'react-native';
 import { CoordinateProvider } from '@/components/CoordinateContext';
-
+import Map from '@/components/map';
 
 export default function TabTwoScreen() {
+  const [nearestPlaces, setNearestPlaces] = useState<any[]>([]);
+
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Tab Two</Text>
-      <View style={styles.separator} lightColor="#eee" darkColor="rgba(255,255,255,0.1)" />
-      <EditScreenInfo path="app/(tabs)/two.tsx" />
-      <CoordinateProvider>
-        <Map/>
-      </CoordinateProvider>
-    </View>
+    <CoordinateProvider>
+      <View style={styles.container}>
+        <Text style={styles.title}>Mapa</Text>
+        <View style={styles.separator} />
+        <Map nearestPlaces={nearestPlaces} />
+      </View>
+    </CoordinateProvider>
   );
 }
 
@@ -31,6 +30,6 @@ const styles = StyleSheet.create({
   separator: {
     marginVertical: 30,
     height: 1,
-    width: '100%',
+    width: '80%',
   },
 });
