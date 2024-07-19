@@ -8,7 +8,8 @@ import { useCoordinateContext } from './CoordinateContext';
 const API_URL = 'http://193.196.36.78:8080/geoserver/MobileGIS/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=MobileGIS:group_1_data&maxFeatures=50&outputformat=application/json';
 
 // Function to fetch places from the GeoServer
-const fetchPlaces = async () => {  //a function that performs tasks that might take some time to complete without blocking the execution of the rest of the code
+const fetchPlaces = async () => {  //a function that performs tasks that might take some time to complete without blocking the execution 
+                                   //of the rest of the code
   try {
     // Make an HTTP GET request to the specified API URL
     const response = await fetch(API_URL);
