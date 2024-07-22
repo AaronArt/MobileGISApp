@@ -19,6 +19,7 @@ This project is a mobile GIS application built with Expo and React Native. The a
    ```bash
    git clone https://github.com/AaronArt/MobileGISApp.git
    cd MobileGISApp
+   
 Install Dependencies
 
 Make sure you have npm or yarn installed, then run:
@@ -26,15 +27,13 @@ Make sure you have npm or yarn installed, then run:
 bash
 Copy code
 npm install
-# or
-yarn install
+
 Start the Development Server
 
 bash
 Copy code
 npm start
 # or
-yarn start
 This will start the Expo development server.
 
 Configuration
@@ -65,12 +64,13 @@ Copy code
 ├── app.json           # Expo configuration
 └── README.md          # Project documentation
 
-Usage
+
+# Usage
 Finding Nearest Places
 Open the app and allow location permissions.
 Press the "Get Location" button to center the map on your current location.
 The map will display nearby touristic places as red markers.
-Playing the Game
+# Playing the Game
 Tap on a red marker to view details about the place and answer a question.
 Answer the question correctly to turn the marker green and remove it from the map.
 Visit all places and answer all questions to complete the game and see a congratulatory message.
@@ -78,5 +78,5 @@ Restarting the Game
 After completing the game, press the "Restart" button to play again with all places available.
 
 
-Developed By
+# Developed By
 Developed by Group 1: Aaron Artunduaga. All rights reserved.
