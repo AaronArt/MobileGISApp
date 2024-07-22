@@ -8,123 +8,166 @@ import { useCoordinateContext } from './CoordinateContext';
 const API_URL = 'http://193.196.36.78:8080/geoserver/MobileGIS/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=MobileGIS:group_1_data&maxFeatures=50&outputformat=application/json';
 
 // Function to fetch places from the GeoServer
-const fetchPlaces = async () => {  //a function that performs tasks that might take some time to complete without blocking the execution 
-                                   //of the rest of the code
+const fetchPlaces = async () => {
   try {
-    // Make an HTTP GET request to the specified API URL
+    // Make a request to the API to get the data
     const response = await fetch(API_URL);
-    // Check if the response status is not OK
+    // Check if the request was not successful
     if (!response.ok) {
-      // Throw an error with the HTTP status code
+      // Throw an error with the status code if the request failed
       throw new Error(`HTTP error! status: ${response.status}`);
     }
-    // Parse the response body as JSON
+    // Convert the response data to JSON format
     const data = await response.json();
     // Log the fetched data to the console for debugging
     console.log('Fetched data:', data);
-    // Return the 'features' property of the fetched data
+    // Return the list of places from the fetched data
     return data.features;
   } catch (error) {
-    // Log any errors that occur during the fetch process to the console
+    // Log any errors that occur during the fetch process
     console.error('Error fetching places:', error);
-    // Throw the error again to be handled by the calling code
+    // Throw the error so it can be handled elsewhere
     throw error;
   }
 };
 
-// Define the type for the props of the Map component
+/* The next lines are important because they help TypeScript understand
+ the structure of data we're working with, ensuring that we use
+ the correct types and catch errors early in the development process.*/
+
+// Define the types of properties that the Map component will receive
 interface MapProps {
+  // nearestPlaces is an array of any type
   nearestPlaces: any[];
 }
+// Define a type for coordinates with latitude and longitude as numbers
+interface Coordinates {
+  latitude: number;
+  longitude: number;
+}
 
-// Define a functional component named Map that accepts props of type MapProps
+
+// Define the Map component as a functional React component with MapProps type
 const Map: React.FC<MapProps> = ({ nearestPlaces }) => {
-
-  // Create a reference for the MapView component, initialized to null
-
-  const mapRef = useRef<MapView | null>(null); // Use the custom CoordinateContext to get and set the coordinates
-  const { coordinates, setCoordinates } = useCoordinateContext(); // Define a state variable to store the user's current location, initialized with the context coordinates
-  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(coordinates); // Define a state variable to track the current place index, initialized to 0
-  const [currentPlaceIndex, setCurrentPlaceIndex] = useState(0); // Define a state variable to manage the visibility of the modal, initialized to false
-  const [modalVisible, setModalVisible] = useState(false); // Define a state variable to store the user's answer, initialized to an empty string
-  const [answer, setAnswer] = useState(''); // Define a state variable to indicate if the data is still loading, initialized to true
-  const [loading, setLoading] = useState(true); // Define a state variable to store the list of places fetched from the API, initialized to an empty array
-  const [places, setPlaces] = useState<any[]>([]); // Define a state variable to store the set of visited places' IDs, initialized to an empty set
-  const [visitedPlaces, setVisitedPlaces] = useState<Set<string>>(new Set()); // Define a state variable to store any error messages, initialized to null
-  const [error, setError] = useState<string | null>(null);  // Define a state variable to store the currently selected place, initialized to null
+   // Create a reference to the MapView component, initially set to null
+  const mapRef = useRef<MapView | null>(null); 
+    // Use the coordinates context to get and set the current coordinates
+  const { coordinates, setCoordinates } = useCoordinateContext(); 
+  // Define a state variable for the user's location, initially set to the context coordinates
+  const [location, setLocation] = useState<Coordinates | null>(coordinates);
+  // Define a state variable to keep track of the current place index, initially set to 0
+  const [currentPlaceIndex, setCurrentPlaceIndex] = useState(0);
+  // Define a state variable to control the visibility of a modal, initially set to false
+  const [modalVisible, setModalVisible] = useState(false);
+  // Define a state variable to store the user's answer, initially set to an empty string
+  const [answer, setAnswer] = useState('');
+  // Define a state variable to indicate if data is still loading, initially set to true
+  const [loading, setLoading] = useState(true);
+  // Define a state variable to store the list of places, initially set to an empty array
+  const [places, setPlaces] = useState<any[]>([]);
+  // Define a state variable to keep track of visited places, initially set to an empty set
+  const [visitedPlaces, setVisitedPlaces] = useState<Set<string>>(new Set());
+  // Define a state variable to store any error messages, initially set to null
+  const [error, setError] = useState<string | null>(null);
+  // Define a state variable to store the currently selected place, initially set to null
   const [selectedPlace, setSelectedPlace] = useState<any | null>(null);
+  // Define a state variable to track which questions have been answered correctly, initially set to an empty array
+  const [allAnswered, setAllAnswered] = useState<boolean[]>([]);
+  // Define a state variable to control the visibility of the restart button, initially set to false
+  const [showRestartButton, setShowRestartButton] = useState(false);
 
-  useEffect(() => {
-    /*This useEffect ensures that the places are fetched and set in the state once the component mounts, 
-    handling any errors that may occur during the process.*/
-
-    // Define an async function to load places from the API
-    const loadPlaces = async () => {
-      try {
-        const fetchedPlaces = await fetchPlaces(); // Update the state with the fetched places
-        setPlaces(fetchedPlaces);
-        setLoading(false);
-      } catch (err) {
-        setError('Failed to load places');
-        setLoading(false);
-      }
-    };
-    loadPlaces();
-  }, []);
-
-  useEffect(() => {
-    /*This useEffect ensures that whenever the coordinates state changes, the location state is updated and the map camera is 
-    animated to the new coordinates. This keeps the map view in sync with the current coordinates.*/
-
-    if (coordinates) {
-      setLocation({ latitude: coordinates.latitude, longitude: coordinates.longitude });
-      // If the map reference is set, animate the camera to the new coordinates
-      if (mapRef.current) {
-        mapRef.current.animateCamera({
-          center: {
-            latitude: coordinates.latitude,
-            longitude: coordinates.longitude,
-          },
-        });
-      }
-    }
-  }, [coordinates]);
-
-
- // Check for answers
-  const handleSubmit = () => {
-    /*This function handles the answer submission, providing feedback to the user, updating the state of visited places, 
-    and managing the visibility of the modal based on the correctness of the user's answer.*/
-
-    // Check if a place is selected, the selected place has an answer property,
-    // and the user's answer matches the correct answer (case-insensitive)
-    if (selectedPlace && selectedPlace.properties.answer && answer.toUpperCase() === String(selectedPlace.properties.answer).toUpperCase()) {
-      // Show an alert indicating the answer is correct
-      Alert.alert('Correct!');
-      // Add the selected place's ID to the set of visited places
-      setVisitedPlaces(prevVisitedPlaces => new Set([...prevVisitedPlaces, selectedPlace.properties.place]));
-      // Close the modal
-      setModalVisible(false);
-      // Clear the answer input
-      setAnswer('');
-    } else {
-      // Show an alert indicating the answer is incorrect
-      Alert.alert('Sorry, try again');
+  // useEffect hook to load places when the component mounts
+useEffect(() => {
+  // Define an async function to fetch places from the API
+  const loadPlaces = async () => {
+    try {
+      // Fetch the places from the API
+      const fetchedPlaces = await fetchPlaces();
+      // Update the state with the fetched places
+      setPlaces(fetchedPlaces);
+      // Initialize allAnswered array with 'false' values, one for each place
+      setAllAnswered(new Array(fetchedPlaces.length).fill(false));
+      // Set loading to false since fetching is complete
+      setLoading(false);
+    } catch (err) {
+      // If there's an error, set an error message
+      setError('Failed to load places');
+      // Set loading to false since fetching is complete, even though it failed
+      setLoading(false);
     }
   };
 
+  // Call the async function to load places
+  loadPlaces();
+}, []); // Empty dependency array means this effect runs only once when the component mounts
 
-// Function to handle the event when a marker is pressed
+// useEffect hook to update the location and map view when coordinates change
+useEffect(() => {
+  // Check if coordinates are available
+  if (coordinates) {
+    // Update the location state with the new coordinates
+    setLocation({ latitude: coordinates.latitude, longitude: coordinates.longitude });
+    // Check if the mapRef reference is set (i.e., the MapView component is available)
+    if (mapRef.current) {
+      // Animate the map camera to center on the new coordinates
+      mapRef.current.animateCamera({
+        center: {
+          latitude: coordinates.latitude,
+          longitude: coordinates.longitude,
+        },
+      });
+    }
+  }
+}, [coordinates]); // Dependency array with coordinates means this effect runs whenever coordinates change
+
+
+  // Function to handle the submission of the user's answer
+const handleSubmit = () => {
+  // Check if a place is selected, the place has an answer property,
+  // and the user's answer matches the correct answer (case-insensitive)
+  if (selectedPlace && selectedPlace.properties.answer && answer.toUpperCase() === String(selectedPlace.properties.answer).toUpperCase()) {
+    // Show an alert indicating the answer is correct
+    Alert.alert('Correct!');
+    // Add the selected place's ID to the set of visited places
+    setVisitedPlaces(prevVisitedPlaces => new Set([...prevVisitedPlaces, selectedPlace.properties.place]));
+    // Find the index of the selected place in the places array
+    const placeIndex = places.findIndex(place => place.properties.place === selectedPlace.properties.place);
+    // Create a new array to update the allAnswered state
+    const newAllAnswered = [...allAnswered]; //... spread Operator. creates a new array with the same elements as allAnswered. 
+    // Mark the place as answered correctly
+    newAllAnswered[placeIndex] = true;
+    // Update the state with the new allAnswered array
+    setAllAnswered(newAllAnswered);
+    // Close the modal
+    setModalVisible(false);
+    // Clear the answer input
+    setAnswer('');
+    // Check if all places have been answered correctly
+    if (newAllAnswered.every(Boolean)) {
+      // Show a congratulatory alert if all answers are correct
+      Alert.alert('You are a Karlsruher now! Herzliche Glückwünsche');
+      // Display the restart button after a short delay
+      setTimeout(() => setShowRestartButton(true), 1000);
+    }
+  } else {
+    // Show an alert indicating the answer is incorrect
+    Alert.alert('Sorry, try again');
+  }
+};
+
+
+// Function to handle when a marker on the map is pressed
 const handleMarkerPress = (place: any) => {
-  // Set the selectedPlace state to the place associated with the pressed marker
+  // Update the state to set the selected place to the place associated with the pressed marker
   setSelectedPlace(place);
-  // Set the modalVisible state to true to show the modal
+  // Update the state to make the modal visible
   setModalVisible(true);
 };
 
-// Asynchronous function to handle GPS functionality
+
+// Function to handle GPS functionality
 const handleGPS = async () => {
-  // Request foreground location permissions from the user
+  // Request permission to access the user's location
   let { status } = await Location.requestForegroundPermissionsAsync();
   // Check if the permission was not granted
   if (status !== 'granted') {
@@ -132,18 +175,13 @@ const handleGPS = async () => {
     Alert.alert('Permission to access location was denied');
     // Exit the function early since permission was not granted
     return;
-    // If permission is granted, further code to get the location and update the map will be added here
   }
-
-  // Request the device's current position asynchronously
+  // Get the current position of the user
   let location = await Location.getCurrentPositionAsync({});
-
-  // Update the location state with the current position's coordinates
-  setLocation(location.coords);
-  // Update the global coordinates context with the current position's coordinates
-  setCoordinates(location.coords);
-
-  // Check if the map reference is set
+  // Update the state with the current position's coordinates
+  setLocation(location.coords as Coordinates);
+  setCoordinates(location.coords as Coordinates);
+  // Check if the map reference is set (i.e., the MapView component is available)
   if (mapRef.current) {
     // Animate the map camera to center on the current position's coordinates
     mapRef.current.animateCamera({
@@ -155,12 +193,23 @@ const handleGPS = async () => {
   }
 };
 
-// Conditional rendering: if loading is true, show a loading indicator
-if (loading) {
-  return (
-    <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color="#0000ff" />
-    </View>
+
+  // Function to restart the game
+const restartGame = () => {
+  // Reset the set of visited places to an empty set
+  setVisitedPlaces(new Set());
+  // Reset the array of answered questions to all 'false' values, one for each place
+  setAllAnswered(new Array(places.length).fill(false));
+  // Hide the restart button
+  setShowRestartButton(false);
+};
+
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
     );
   }
 
@@ -184,36 +233,39 @@ if (loading) {
           longitudeDelta: 0.0421,
         }}
       >
- {nearestPlaces.map((place, index) => (
-  <Marker
-    key={index}
-    coordinate={{
-      latitude: place.geometry.coordinates[1],
-      longitude: place.geometry.coordinates[0],
-    }}
-    pinColor={visitedPlaces.has(place.properties.place) ? "green" : "red"}
-  >
-    <Callout>
-      <Text>{`${index + 1}-${place.properties.place} (${place.properties.place})`}</Text>
-    </Callout>
-  </Marker>
-))}
-
-{places.map((place, index) => (
-  <Marker
-    key={`place-${index}`}
-    coordinate={{
-      latitude: place.geometry.coordinates[1],
-      longitude: place.geometry.coordinates[0],
-    }}
-    pinColor={visitedPlaces.has(place.properties.place) ? "green" : "red"}
-    onPress={() => handleMarkerPress(place)}
-  >
-    <Callout>
-      <Text>{`${index + 1}-${place.properties.place}`}</Text>
-    </Callout>
-  </Marker>
-))}
+        {nearestPlaces.map((place, index) => (
+          !visitedPlaces.has(place.properties.place) && (
+            <Marker
+              key={index}
+              coordinate={{
+                latitude: place.geometry.coordinates[1],
+                longitude: place.geometry.coordinates[0],
+              }}
+              pinColor="red"
+            >
+              <Callout>
+                <Text>{`${index + 1}-${place.properties.place} (${place.properties.place})`}</Text>
+              </Callout>
+            </Marker>
+          )
+        ))}
+        {places.map((place, index) => (
+          !visitedPlaces.has(place.properties.place) && (
+            <Marker
+              key={`place-${index}`}
+              coordinate={{
+                latitude: place.geometry.coordinates[1],
+                longitude: place.geometry.coordinates[0],
+              }}
+              pinColor="red"
+              onPress={() => handleMarkerPress(place)}
+            >
+              <Callout>
+                <Text>{`${index + 1}-${place.properties.place}`}</Text>
+              </Callout>
+            </Marker>
+          )
+        ))}
         {location && (
           <>
             <Marker
@@ -256,9 +308,15 @@ if (loading) {
             <Text>{selectedPlace.properties.question}</Text>
             <TextInput style={styles.input} onChangeText={setAnswer} value={answer} />
             <Button title="Submit" onPress={handleSubmit} />
-            <Button title="Close" onPress={() => setModalVisible(false)} disabled={!selectedPlace.properties.answer || answer.toUpperCase() !== String(selectedPlace.properties.answer).toUpperCase()} />
+            <Button title="Close" onPress={() => setModalVisible(false)} />
           </View>
         </Modal>
+      )}
+
+      {showRestartButton && (
+        <TouchableOpacity style={styles.restartButton} onPress={restartGame}>
+          <Text style={styles.restartButtonText}>Restart</Text>
+        </TouchableOpacity>
       )}
     </View>
   );
@@ -323,6 +381,17 @@ const styles = StyleSheet.create({
   },
   errorText: {
     color: 'red',
+    fontSize: 18,
+  },
+  restartButton: {
+    backgroundColor: 'green',
+    padding: 15,
+    borderRadius: 10,
+    position: 'absolute',
+    bottom: 50,
+  },
+  restartButtonText: {
+    color: 'white',
     fontSize: 18,
   },
 });

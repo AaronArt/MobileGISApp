@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, FlatList } from 'react-native';
+import { StyleSheet, View, Text, FlatList, Image } from 'react-native';
 import { CoordinateProvider } from '@/components/CoordinateContext';
 import ButtonLocation from '@/components/locationrequest';
 
@@ -9,7 +9,11 @@ export default function TabOneScreen() {
   return (
     <CoordinateProvider>
       <View style={styles.container}>
-        <Text style={styles.title}>Lugares Cercanos</Text>
+        <Image 
+          source={require('@/assets/images/logo.png')}
+          style={styles.logo}
+        />
+        <Text style={styles.title}>Nearest places</Text>
         <View style={styles.separator} />
         <ButtonLocation
           onLocationUpdated={(location: any) => console.log('Location updated', location)}
@@ -35,6 +39,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 16,
+  },
+  logo: {
+    width: 100,
+    height: 100,
+    marginBottom: 20,
   },
   title: {
     fontSize: 20,
