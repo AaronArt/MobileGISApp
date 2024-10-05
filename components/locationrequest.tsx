@@ -45,7 +45,7 @@ const ButtonLocation: React.FC<ButtonLocationProps> = ({ onLocationUpdated, onNe
     const fetchPlaces = async () => {
       try {
         // Make a network request to fetch places data from the specified URL
-        const response = await fetch('http://193.196.36.78:8080/geoserver/MobileGIS/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=MobileGIS:group_1_data&maxFeatures=50&outputformat=application/json');
+        const response = await fetch('http://ec2-13-51-201-42.eu-north-1.compute.amazonaws.com:8080/geoserver/mobileGIS/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=mobileGIS%3AMobileGIS&maxFeatures=50&outputFormat=application/json');
         // Parse the response as JSON
         const data = await response.json();
         // Update the state with the fetched places data

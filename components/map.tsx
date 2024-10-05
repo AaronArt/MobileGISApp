@@ -5,7 +5,7 @@ import MapViewDirections from 'react-native-maps-directions';
 import * as Location from 'expo-location';
 import { useCoordinateContext } from './CoordinateContext';
 
-const API_URL = 'http://193.196.36.78:8080/geoserver/MobileGIS/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=MobileGIS:group_1_data&maxFeatures=50&outputformat=application/json';
+const API_URL = 'http://ec2-13-51-201-42.eu-north-1.compute.amazonaws.com:8080/geoserver/mobileGIS/ows?service=WFS&version=1.0.0&request=GetFeature&typeName=mobileGIS%3AMobileGIS&maxFeatures=50&outputFormat=application/json';
 
 // Function to fetch places from the GeoServer
 const fetchPlaces = async () => {
@@ -125,13 +125,13 @@ useEffect(() => {
 const handleSubmit = () => {
   // Check if a place is selected, the place has an answer property,
   // and the user's answer matches the correct answer (case-insensitive)
-  if (selectedPlace && selectedPlace.properties.answer && answer.toUpperCase() === String(selectedPlace.properties.answer).toUpperCase()) {
+  if (selectedPlace && selectedPlace.properties.Answer && answer.toUpperCase() === String(selectedPlace.properties.Answer).toUpperCase()) {
     // Show an alert indicating the answer is correct
     Alert.alert('Correct!');
     // Add the selected place's ID to the set of visited places
-    setVisitedPlaces(prevVisitedPlaces => new Set([...prevVisitedPlaces, selectedPlace.properties.place]));
+    setVisitedPlaces(prevVisitedPlaces => new Set([...prevVisitedPlaces, selectedPlace.properties.Place]));
     // Find the index of the selected place in the places array
-    const placeIndex = places.findIndex(place => place.properties.place === selectedPlace.properties.place);
+    const placeIndex = places.findIndex(place => place.properties.Place === selectedPlace.properties.Place);
     // Create a new array to update the allAnswered state
     const newAllAnswered = [...allAnswered]; //... spread Operator. creates a new array with the same elements as allAnswered. 
     // Mark the place as answered correctly
@@ -234,7 +234,7 @@ const restartGame = () => {
         }}
       >
         {nearestPlaces.map((place, index) => (
-          !visitedPlaces.has(place.properties.place) && (
+          !visitedPlaces.has(place.properties.Place) && (
             <Marker
               key={index}
               coordinate={{
@@ -244,13 +244,13 @@ const restartGame = () => {
               pinColor="red"
             >
               <Callout>
-                <Text>{`${index + 1}-${place.properties.place} (${place.properties.place})`}</Text>
+                <Text>{`${index + 1}-${place.properties.Place} (${place.properties.Place})`}</Text>
               </Callout>
             </Marker>
           )
         ))}
         {places.map((place, index) => (
-          !visitedPlaces.has(place.properties.place) && (
+          !visitedPlaces.has(place.properties.Place) && (
             <Marker
               key={`place-${index}`}
               coordinate={{
@@ -261,7 +261,7 @@ const restartGame = () => {
               onPress={() => handleMarkerPress(place)}
             >
               <Callout>
-                <Text>{`${index + 1}-${place.properties.place}`}</Text>
+                <Text>{`${index + 1}-${place.properties.Place}`}</Text>
               </Callout>
             </Marker>
           )
@@ -304,8 +304,8 @@ const restartGame = () => {
       {selectedPlace && (
         <Modal animationType="slide" transparent={true} visible={modalVisible} onRequestClose={() => setModalVisible(false)}>
           <View style={styles.modalView}>
-            <Text>{selectedPlace.properties.name}</Text>
-            <Text>{selectedPlace.properties.question}</Text>
+            <Text>{selectedPlace.properties.Place}</Text>
+            <Text>{selectedPlace.properties.Question}</Text>
             <TextInput style={styles.input} onChangeText={setAnswer} value={answer} />
             <Button title="Submit" onPress={handleSubmit} />
             <Button title="Close" onPress={() => setModalVisible(false)} />
