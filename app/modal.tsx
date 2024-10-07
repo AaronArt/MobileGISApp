@@ -33,7 +33,7 @@ export default function ModalScreen() {
         8. Press the restart button to play again with all the places available.
       </Text>
       <Text style={styles.developerInfo}>
-        Developed by Group 1: Aaron, Michael, Rania, Shilpa, Swathi.
+        Developed by Aaron Artunduaga.
       </Text>
       <Text style={styles.developerInfo}>
         All rights reserved ®.
